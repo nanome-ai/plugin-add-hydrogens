@@ -1,6 +1,7 @@
 import nanome
 import tempfile
 import shutil
+import subprocess
 from nanome.util import Logs
 
 class AddHydrogens(nanome.PluginInstance):
@@ -16,7 +17,7 @@ class AddHydrogens(nanome.PluginInstance):
         if self.request and self.check_processes():
             complexes = []
             for complex_file in self.complex_output_files:
-                complex = nanome.structure.Complex.from_pdb(complex_file.name)
+                complex = nanome.structure.Complex.io.from_pdb(path=complex_file.name)
                 complexes.append(complex)
             self.request.send_response(complexes)
             self.request = None
@@ -30,23 +31,20 @@ class AddHydrogens(nanome.PluginInstance):
         shutil.rmtree(self.temp_dir.name)
 
     def add_Hs_nanobabel(self, complexes):
-        if len(self._complex_files):
-            return
-
         for complex in complexes:
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
             outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
             self.complex_input_files.append(infile)
             self.complex_output_files.append(outfile)
             complex.io.to_pdb(infile.name)
-            args = ['nanobabel', 'hydrogen', '-add', '-i', infile.name, '-o', self.outfile.name]
+            args = ['nanobabel', 'hydrogen', '-add', '-i', infile.name, '-o', outfile.name]
             self.processes.append(subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
     def check_processes(self):
         if len(self.processes) == 0:
             return True
         for process in self.processes:
-            if self._smina_process.poll() != None:
+            if process.poll() != None:
                 self.processes.remove(process)
         return False
 
