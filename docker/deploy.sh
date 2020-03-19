@@ -1,11 +1,11 @@
-if [ "$(docker ps -aq -f name=nanome-add-hydrogens)" != "" ]; then
+if [ "$(docker ps -aq -f name=nanome-hydrogens)" != "" ]; then
     # cleanup
     echo "removing exited container"
-    docker rm -f nanome-add-hydrogens
+    docker rm -f nanome-hydrogens
 fi
 
 docker run -d \
---name nanome-add-hydrogens \
+--name nanome-hydrogens \
 --restart unless-stopped \
 -e ARGS="$*" \
-nanome-add-hydrogens
+nanome-hydrogens

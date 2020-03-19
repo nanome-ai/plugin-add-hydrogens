@@ -1,4 +1,4 @@
-from nanome_add_hydrogens import AddHydrogens
+from nanome_hydrogens import Hydrogens
 
 if __name__ == '__main__':
-    AddHydrogens.main()
+    Hydrogens.main()

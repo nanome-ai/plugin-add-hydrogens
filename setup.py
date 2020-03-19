@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 README = (pathlib.Path(__file__).parent / 'README.md').read_text()
 
 setup(
-    name='nanome-add-hydrogens',
+    name='nanome-hydrogens',
     packages=find_packages(),
     version='0.1.0',
     license='MIT',
@@ -13,11 +13,11 @@ setup(
     long_description_content_type='text/markdown',
     author='Nanome',
     author_email='hello@nanome.ai',
-    url='plugin-add-hydrogens',
+    url='plugin-hydrogens',
     platforms='any',
     keywords=['virtual-reality', 'chemistry', 'python', 'api', 'plugin'],
     install_requires=['nanome'],
-    entry_points={'console_scripts': ['nanome-add-hydrogens = nanome_add_hydrogens.AddHydrogens:main']},
+    entry_points={'console_scripts': ['nanome-hydrogens = nanome_hydrogens.Hydrogens:main']},
     classifiers=[
         # 'Development Status :: 3 - Alpha',
 
@@ -33,6 +33,6 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     package_data={
-        'nanome_add_hydrogens': []
+        'nanome_hydrogens': []
     },
 )

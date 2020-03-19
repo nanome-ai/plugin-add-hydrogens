@@ -1,6 +1,6 @@
-# Nanome - Add Hydrogens
+# Nanome - Hydrogens
 
-A nanome integration plugin to add hydrogens to structures
+A nanome integration plugin to add and remove hydrogens to/from structures
 
 ### Preparation
 
@@ -24,18 +24,18 @@ $ python3 -m pip install nanome --upgrade
 
 ### Installation
 
-To install Add Hydrogens:
+To install Hydrogens:
 
 ```sh
-$ python3 -m pip install nanome-add-hydrogens
+$ python3 -m pip install nanome-hydrogens
 ```
 
 ### Usage
 
-To start Add Hydrogens:
+To start Hydrogens:
 
 ```sh
-$ nanome-add-hydrogens -a <plugin_server_address> [optional args]
+$ nanome-hydrogens -a <plugin_server_address> [optional args]
 ```
 
 #### Optional arguments:
@@ -48,7 +48,7 @@ $ nanome-add-hydrogens -a <plugin_server_address> [optional args]
 
 ### Docker Usage
 
-To run Add Hydrogens in a Docker container:
+To run Hydrogens in a Docker container:
 
 ```sh
 $ cd docker
@@ -58,7 +58,7 @@ $ ./deploy.sh -a <plugin_server_address> [optional args]
 
 ### Development
 
-To run Add Hydrogens with autoreload:
+To run Hydrogens with autoreload:
 
 ```sh
 $ python3 run.py -r -a <plugin_server_address> [optional args]
