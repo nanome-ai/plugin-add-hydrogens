@@ -19,9 +19,9 @@ class Hydrogens(nanome.PluginInstance):
         if self.request and self.check_processes():
             complexes = []
             for i, complex_file in enumerate(self.complex_output_files):
-                complex = nanome.structure.Complex.from_pdb(complex_file.name)
+                complex = nanome.structure.Complex.io.from_pdb(path=complex_file.name)
                 complex.index = self.complex_serials[i]
-                for i, molecule in enumerate(complex.get_molecules()):
+                for i, molecule in enumerate(complex.molecules):
                     molecule.index = self.molecule_serials[i]
                 complexes.append(complex)
             self.request.send_response(complexes)
@@ -41,7 +41,7 @@ class Hydrogens(nanome.PluginInstance):
     def add_Hs_nanobabel(self, complexes):
         for complex in complexes:
             self.complex_serials.append(complex.index)
-            for molecule in complex.get_molecules():
+            for molecule in complex.molecules:
                 self.molecule_serials.append(molecule.index)
 
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
