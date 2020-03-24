@@ -10,8 +10,8 @@ class Hydrogens(nanome.PluginInstance):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.processes = []
         self.complex_input_files  = []
-        self.complex_serials = []
-        self.molecule_serials = []
+        self.serials = []
+        self.matrices = []
         self.complex_output_files = []
         self.integration.hydrogen_add = self.add_H
 
@@ -20,14 +20,22 @@ class Hydrogens(nanome.PluginInstance):
             complexes = []
             for i, complex_file in enumerate(self.complex_output_files):
                 complex = nanome.structure.Complex.io.from_pdb(path=complex_file.name)
-                complex.index = self.complex_serials[i]
-                for i, molecule in enumerate(complex.molecules):
-                    molecule.index = self.molecule_serials[i]
+                complex.index = self.serials[i][0]
+                for j, molecule in enumerate(complex.molecules):
+                    molecule.index = self.serials[i][j]
+                self.convert_to_relative_position(complex, i)
                 complexes.append(complex)
+                for atom in list(complex.atoms):
+                    Logs.debug(f'{atom.symbol}: {atom.position}')
             self.request.send_response(complexes)
-            self.request = None
-            self.complex_serials = []
-            self.molecule_serials = []
+            self.clear()
+        
+    def clear(self):
+        self.request = None
+        self.complex_input_files.clear()
+        self.complex_output_files.clear()
+        self.serials.clear()
+        self.matrices.clear()
 
     def add_H(self, request):
         Logs.debug('doing things!')
@@ -40,9 +48,12 @@ class Hydrogens(nanome.PluginInstance):
 
     def add_Hs_nanobabel(self, complexes):
         for complex in complexes:
-            self.complex_serials.append(complex.index)
+            self.add_matrices_for_complex(complex)
+            for atom in list(complex.atoms):
+                Logs.debug(f'{atom.symbol}: {atom.position}')
+            self.serials.append([complex.index])
             for molecule in complex.molecules:
-                self.molecule_serials.append(molecule.index)
+                self.serials[-1].append(molecule.index)
 
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
             outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
@@ -57,8 +68,16 @@ class Hydrogens(nanome.PluginInstance):
             return True
         for process in self.processes:
             if process.poll() != None:
+                index = self.processes.index(process)
                 self.processes.remove(process)
         return False
+
+    def add_matrices_for_complex(self, complex):
+        self.matrices.append(complex.get_complex_to_workspace_matrix())
+
+    def convert_to_relative_position(self, complex, i):
+        complex.position = complex.get_workspace_to_complex_matrix() * complex.position
+        complex.position = self.matrices[i] * complex.position
 
 def main():
     plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False)

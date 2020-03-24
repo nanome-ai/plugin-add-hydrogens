@@ -10,7 +10,7 @@ RUN apt install -y git
 
 RUN pip3 install --upgrade pip
 RUN git clone https://github.com/nanome-ai/nanome.git
-RUN cd nanome && git checkout BetterPluginIntegration && python3.7 -m pip install .
+RUN cd nanome && git checkout BetterPluginIntegration && git pull && python3.7 -m pip install .
 # RUN python3.7 -m pip install nanome
 
 COPY . /app
