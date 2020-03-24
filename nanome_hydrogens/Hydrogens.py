@@ -19,7 +19,7 @@ class Hydrogens(nanome.PluginInstance):
         if self.request and self.check_processes():
             complexes = []
             for i, complex_file in enumerate(self.complex_output_files):
-                complex = nanome.structure.Complex.io.from_pdb(path=complex_file.name)
+                complex = nanome.structure.Complex.io.from_sdf(path=complex_file.name)
                 complex.index = self.serials[i][0]
                 for j, molecule in enumerate(complex.molecules):
                     molecule.index = self.serials[i][j]
@@ -56,7 +56,7 @@ class Hydrogens(nanome.PluginInstance):
                 self.serials[-1].append(molecule.index)
 
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
-            outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
+            outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
             self.complex_input_files.append(infile)
             self.complex_output_files.append(outfile)
             complex.io.to_pdb(infile.name)
