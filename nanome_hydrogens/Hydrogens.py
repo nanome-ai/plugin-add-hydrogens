@@ -4,6 +4,9 @@ import shutil
 import subprocess
 from nanome.util import Logs
 
+PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
+PDBOptions.write_bonds = True
+
 class Hydrogens(nanome.PluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -48,7 +51,7 @@ class Hydrogens(nanome.PluginInstance):
 
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
             outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
-            complex.io.to_pdb(infile.name)
+            complex.io.to_pdb(infile.name, PDBOptions)
             args = ['nanobabel', 'hydrogen', arg, '-i', infile.name, '-o', outfile.name]
             p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.processes.append((p, complex.index, mol_serials, infile, outfile, request))
