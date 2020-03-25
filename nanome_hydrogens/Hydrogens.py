@@ -6,78 +6,60 @@ from nanome.util import Logs
 
 class Hydrogens(nanome.PluginInstance):
     def start(self):
-        self.request = None
         self.temp_dir = tempfile.TemporaryDirectory()
         self.processes = []
-        self.complex_input_files  = []
-        self.serials = []
-        self.matrices = []
-        self.complex_output_files = []
         self.integration.hydrogen_add = self.add_H
+        self.integration.hydrogen_remove = self.rem_H
 
     def update(self):
-        if self.request and self.check_processes():
+        for process in reversed(self.processes):
+            process[0].communicate()
+            if process[0].poll() == None:
+                continue
+
             complexes = []
-            for i, complex_file in enumerate(self.complex_output_files):
-                complex = nanome.structure.Complex.io.from_sdf(path=complex_file.name)
-                complex.index = self.serials[i][0]
-                for j, molecule in enumerate(complex.molecules):
-                    molecule.index = self.serials[i][j]
-                self.convert_to_relative_position(complex, i)
-                complexes.append(complex)
-                for atom in list(complex.atoms):
-                    Logs.debug(f'{atom.symbol}: {atom.position}')
-            self.request.send_response(complexes)
-            self.clear()
-        
-    def clear(self):
-        self.request = None
-        self.complex_input_files.clear()
-        self.complex_output_files.clear()
-        self.serials.clear()
-        self.matrices.clear()
+            complex = nanome.structure.Complex.io.from_sdf(path=process[4].name)
+            complex.index = process[1]
+            for i, molecule in enumerate(complex.molecules):
+                molecule.index = process[2][i]
+            complexes.append(complex)
+            process[5].send_response(complexes)
+            Logs.debug('Removing process')
+            self.processes.remove(process)
 
     def add_H(self, request):
-        Logs.debug('doing things!')
-        self.request = request
+        Logs.debug('Add H')
         complexes = request.get_args()
-        self.add_Hs_nanobabel(complexes)
+        self.exec_nanobabel('-add', complexes, request)
+
+    def rem_H(self, request):
+        Logs.debug('Remove H')
+        complexes = request.get_args()
+        self.exec_nanobabel('-del', complexes, request)
 
     def on_stop(self):
         shutil.rmtree(self.temp_dir.name)
 
-    def add_Hs_nanobabel(self, complexes):
+    def exec_nanobabel(self, arg, complexes, request):
         for complex in complexes:
-            self.add_matrices_for_complex(complex)
-            for atom in list(complex.atoms):
-                Logs.debug(f'{atom.symbol}: {atom.position}')
-            self.serials.append([complex.index])
+            mol_serials = []
             for molecule in complex.molecules:
-                self.serials[-1].append(molecule.index)
+                mol_serials.append(molecule.index)
 
             infile = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
             outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
-            self.complex_input_files.append(infile)
-            self.complex_output_files.append(outfile)
             complex.io.to_pdb(infile.name)
-            args = ['nanobabel', 'hydrogen', '-add', '-i', infile.name, '-o', outfile.name]
-            self.processes.append(subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            args = ['nanobabel', 'hydrogen', arg, '-i', infile.name, '-o', outfile.name]
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.processes.append((p, complex.index, mol_serials, infile, outfile, request))
 
     def check_processes(self):
         if len(self.processes) == 0:
             return True
         for process in self.processes:
-            if process.poll() != None:
-                index = self.processes.index(process)
+            if process[0].poll() != None:
                 self.processes.remove(process)
         return False
-
-    def add_matrices_for_complex(self, complex):
-        self.matrices.append(complex.get_complex_to_workspace_matrix())
-
-    def convert_to_relative_position(self, complex, i):
-        complex.position = complex.get_workspace_to_complex_matrix() * complex.position
-        complex.position = self.matrices[i] * complex.position
 
 def main():
     plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False)
