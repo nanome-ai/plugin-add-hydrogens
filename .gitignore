@@ -1,9 +1,9 @@
 __pycache__
+nanobabel/build
 /.vscode
 /build
 /dist
-nanome_add_hydrogens.egg-info
-nanobabel/build
-*.sdf
+*.egg-info
+*.log
 *.pdb
-.DS_Store
+*.sdf
