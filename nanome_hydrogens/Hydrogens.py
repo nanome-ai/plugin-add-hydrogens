@@ -55,8 +55,8 @@ class Hydrogens(nanome.PluginInstance):
 
     def add_H(self, request, passed_complexes=None):
         Logs.debug('Add H')
-        complexes = passed_complexes if passed_complexes is not None else request.get_args()
-        self.exec_nanobabel('-add', complexes, request)
+        self.complexes = passed_complexes if passed_complexes is not None else request.get_args()
+        self.exec_nanobabel('-add', self.complexes, request)
 
     def rem_H(self, request):
         Logs.debug('Remove H')
@@ -96,7 +96,7 @@ def main():
     plugin = nanome.Plugin(
         'Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False)
     plugin.set_plugin_class(Hydrogens)
-    plugin.run('127.0.0.1', 8888)
+    plugin.run(nanome.util.config.fetch('host'), nanome.util.config.fetch('port'))
 
 
 if __name__ == '__main__':
