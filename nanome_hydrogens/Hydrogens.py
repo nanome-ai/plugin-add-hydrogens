@@ -60,7 +60,8 @@ class Hydrogens(nanome.PluginInstance):
 
     def rem_H(self, request):
         Logs.debug('Remove H')
-        self.exec_nanobabel('-del', request.get_args(), request)
+        self.complexes = request.get_args()
+        self.exec_nanobabel('-del', self.complexes, request)
 
     def on_stop(self):
         shutil.rmtree(self.temp_dir.name)
