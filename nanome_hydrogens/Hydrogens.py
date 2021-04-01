@@ -97,7 +97,7 @@ def main():
     plugin = nanome.Plugin(
         'Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False)
     plugin.set_plugin_class(Hydrogens)
-    plugin.run(nanome.util.config.fetch('host'), nanome.util.config.fetch('port'))
+    plugin.run()
 
 
 if __name__ == '__main__':

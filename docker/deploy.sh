@@ -1,11 +1,16 @@
-if [ "$(docker ps -aq -f name=nanome-hydrogens)" != "" ]; then
-    # cleanup
-    echo "removing exited container"
-    docker rm -f nanome-hydrogens
+#!/bin/bash
+
+echo "./deploy.sh $*" > redeploy.sh
+chmod +x redeploy.sh
+
+existing=$(docker ps -aq -f name=hydrogens)
+if [ -n "$existing" ]; then
+    echo "removing existing container"
+    docker rm -f $existing
 fi
 
 docker run -d \
---name nanome-hydrogens \
+--name hydrogens \
 --restart unless-stopped \
 -e ARGS="$*" \
-nanome-hydrogens
+hydrogens

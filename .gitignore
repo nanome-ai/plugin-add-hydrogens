@@ -1,9 +1,5 @@
 __pycache__
-nanobabel/build
 /.vscode
-/build
-/dist
-*.egg-info
+/docker/.cachebust
+/docker/redeploy.sh
 *.log
-*.pdb
-*.sdf
