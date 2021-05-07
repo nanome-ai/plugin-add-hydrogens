@@ -28,8 +28,12 @@ class Hydrogens(nanome.PluginInstance):
             self.rem_H(req_rem)
 
         def get_selected(complexes):
-            selected_complex_ids = [
-                complex.index for complex in complexes if complex.get_selected()]
+            selected_complex_ids = [complex.index for complex in complexes if complex.get_selected()]
+
+            if len(selected_complex_ids) == 0:
+                self.plugin.send_notification(nanome.util.enums.NotificationTypes.warning, "Please select a complex.")
+                return
+
             self.request_complexes(selected_complex_ids, hydrogens)
 
         self.request_complex_list(get_selected)
@@ -41,8 +45,7 @@ class Hydrogens(nanome.PluginInstance):
                 continue
 
             complexes = []
-            complex = nanome.structure.Complex.io.from_sdf(
-                path=process[4].name)
+            complex = nanome.structure.Complex.io.from_sdf(path=process[4].name)
             complex.position = self.complexes[0].position
             complex.rotation = self.complexes[0].rotation
             complex.index = process[1]
