@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import subprocess
 from nanome.util import Logs
+from nanome.util.enums import Integrations
 
 PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
 PDBOptions.write_bonds = True
@@ -97,8 +98,7 @@ class Hydrogens(nanome.PluginInstance):
 
 
 def main():
-    plugin = nanome.Plugin(
-        'Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False)
+    plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False, integrations=[Integrations.hydrogen])
     plugin.set_plugin_class(Hydrogens)
     plugin.run()
 
