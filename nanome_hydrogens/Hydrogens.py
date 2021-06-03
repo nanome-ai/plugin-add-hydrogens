@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import subprocess
 from nanome.util import Logs
-from nanome.util.enums import Integrations
+from nanome.util.enums import Integrations, NotificationTypes
 
 PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
 PDBOptions.write_bonds = True
@@ -31,8 +31,8 @@ class Hydrogens(nanome.PluginInstance):
         def get_selected(complexes):
             selected_complex_ids = [complex.index for complex in complexes if complex.get_selected()]
 
-            if len(selected_complex_ids) == 0:
-                self.plugin.send_notification(nanome.util.enums.NotificationTypes.warning, "Please select a complex.")
+            if not selected_complex_ids:
+                self.send_notification(NotificationTypes.warning, "Please select a complex.")
                 return
 
             self.request_complexes(selected_complex_ids, hydrogens)
