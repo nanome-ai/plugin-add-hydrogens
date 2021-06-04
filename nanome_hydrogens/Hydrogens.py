@@ -1,101 +1,99 @@
 import nanome
 import tempfile
-import shutil
-import subprocess
-from nanome.util import Logs
+from nanome.util import async_callback, Logs, Process
 from nanome.util.enums import Integrations, NotificationTypes
+from .ComplexUtils import ComplexUtils as utils
 
 PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
 PDBOptions.write_bonds = True
 
 
-class Hydrogens(nanome.PluginInstance):
+class Hydrogens(nanome.AsyncPluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.processes = []
-        self.integration.hydrogen_add = self.add_H
-        self.integration.hydrogen_remove = self.rem_H
-        self.complexes = None
+        self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
+        self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
+        self.integration.hydrogen_add = self.add_hydrogens
+        self.integration.hydrogen_remove = self.remove_hydrogens
 
-    def on_run(self):
-        def hydrogens(complexes):
-            self.complexes = complexes
-            req_rem = MemoryObject(
-                {}, {'get_args': lambda: complexes, 'send_response': lambda complexes: self.add_H(req_add, complexes)})
+    @async_callback
+    async def on_run(self):
+        # get selected
+        shallow = await self.request_complex_list()
+        indices_selected = [c.index for c in shallow if c.get_selected()]
 
-            req_add = MemoryObject(
-                {}, {'get_args': lambda: complexes, 'send_response': lambda complexes: self.update_structures_deep(complexes)})
+        # were there any?
+        if not indices_selected:
+            self.send_notification(NotificationTypes.warning, "Please select a complex.")
+            return
 
-            self.rem_H(req_rem)
+        # remove hydrogens
+        deep = await self.request_complexes(indices_selected)
+        deep = await self.remove_hydrogens(None, deep, upload=False)
 
-        def get_selected(complexes):
-            selected_complex_ids = [complex.index for complex in complexes if complex.get_selected()]
+        # stop if something's wrong
+        if not deep:
+            return
 
-            if not selected_complex_ids:
-                self.send_notification(NotificationTypes.warning, "Please select a complex.")
-                return
-
-            self.request_complexes(selected_complex_ids, hydrogens)
-
-        self.request_complex_list(get_selected)
-
-    def update(self):
-        for process in reversed(self.processes):
-            process[0].communicate()
-            if process[0].poll() == None:
-                continue
-
-            complexes = []
-            complex = nanome.structure.Complex.io.from_sdf(path=process[4].name)
-            complex.position = self.complexes[0].position
-            complex.rotation = self.complexes[0].rotation
-            complex.index = process[1]
-            for i, molecule in enumerate(complex.molecules):
-                molecule.index = process[2][i]
-            complexes.append(complex)
-            process[5].send_response(complexes)
-            Logs.debug('Removing process')
-            self.processes.remove(process)
-
-    def add_H(self, request, passed_complexes=None):
-        Logs.debug('Add H')
-        self.complexes = passed_complexes if passed_complexes is not None else request.get_args()
-        self.exec_nanobabel('-add', self.complexes, request)
-
-    def rem_H(self, request):
-        Logs.debug('Remove H')
-        self.complexes = request.get_args()
-        self.exec_nanobabel('-del', self.complexes, request)
+        # add hydrogens
+        await self.add_hydrogens(None, deep, upload=True)
 
     def on_stop(self):
-        shutil.rmtree(self.temp_dir.name)
+        self.temp_dir.cleanup()
 
-    def exec_nanobabel(self, arg, complexes, request):
-        for complex in complexes:
-            mol_serials = []
-            for molecule in complex.molecules:
-                mol_serials.append(molecule.index)
+    @async_callback
+    async def add_hydrogens(self, request, complexes=None, upload=False):
+        Logs.debug('Add H')
+        new_complexes = await self.run_hydrogens('-add', request, complexes, upload, err_message="Could not add hydrogens.")
+        return new_complexes
 
-            infile = tempfile.NamedTemporaryFile(
-                delete=False, suffix=".pdb", dir=self.temp_dir.name)
-            outfile = tempfile.NamedTemporaryFile(
-                delete=False, suffix=".sdf", dir=self.temp_dir.name)
-            complex.io.to_pdb(infile.name, PDBOptions)
-            args = ['nanobabel', 'hydrogen', arg,
-                    '-i', infile.name, '-o', outfile.name]
-            p = subprocess.Popen(
-                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.processes.append(
-                (p, complex.index, mol_serials, infile, outfile, request))
+    @async_callback
+    async def remove_hydrogens(self, request, complexes=None, upload=False):
+        Logs.debug('Remove H')
+        new_complexes = await self.run_hydrogens('-del', request, complexes, upload, err_message="Could not delete hydrogens.")
+        return new_complexes
 
-    def check_processes(self):
-        if len(self.processes) == 0:
-            return True
-        for process in self.processes:
-            if process[0].poll() != None:
-                self.processes.remove(process)
-        return False
+    @async_callback
+    async def run_hydrogens(self, arg, request, complexes, upload=False, err_message='An error occured'):
+        # Run or Integration?
+        to_update = request.get_args() if request else complexes
 
+        for ci, complex in enumerate(to_update):
+            
+            # nanobabel as Process API Process
+            complex.io.to_pdb(self.input_file.name, PDBOptions)
+            p = create_process('nanobabel', ['hydrogen', arg, '-i', self.input_file.name, '-o', self.output_file.name])
+            
+            # if error, notify user and return
+            exit_code = await p.start()
+            if exit_code:
+                self.send_notification(NotificationTypes.error, err_message)
+                Logs.error(err_message)
+                return
+
+            updated_complex = nanome.api.structure.Complex.io.from_sdf(path=self.output_file.name)
+            molecules = list(complex.molecules)
+            for mi, updated_molecule in enumerate(updated_complex.molecules):
+                updated_molecule.index = molecules[mi].index
+            utils.reidentify(updated_complex, complex)
+            to_update[ci] = updated_complex
+        
+        if request:
+            request.send_response(to_update)
+        elif upload:
+            self.update_structures_deep(to_update)
+
+        return to_update
+
+def create_process(path, args):
+    p = Process()
+    p.executable_path = path
+    p.args = args
+    p.output_text = True
+    p.on_error = Logs.error
+    p.on_output = Logs.warning
+    p.on_done = Logs.message
+    return p
 
 def main():
     plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False, integrations=[Integrations.hydrogen])
