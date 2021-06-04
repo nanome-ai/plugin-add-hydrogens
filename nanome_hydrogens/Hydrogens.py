@@ -1,14 +1,14 @@
+from .ComplexUtils import ComplexUtils as utils
 import nanome
 from nanome.util import async_callback, Logs
 from nanome.util.enums import Integrations, NotificationTypes
 from rdkit import Chem
-import shutil
 import tempfile
 
 PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
 PDBOptions.write_bonds = True
 
-class Hydrogens(nanome.PluginInstance):
+class Hydrogens(nanome.AsyncPluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
@@ -19,7 +19,7 @@ class Hydrogens(nanome.PluginInstance):
 
     @async_callback
     async def on_run(self):
-        shallow = await self.request_complex_list(get_selected)
+        shallow = await self.request_complex_list()
         # get selected complexes
         selected_complex_ids = [complex.index for complex in shallow if complex.get_selected()]
         if not selected_complex_ids:
@@ -27,46 +27,52 @@ class Hydrogens(nanome.PluginInstance):
             return
 
         deep = await self.request_complexes(selected_complex_ids)
-        self.add_H(self, complexes=deep, upload=False)
-        self.rem_H(self, complexes=deep, upload=True)
+        deep = await self.rem_H(self, complexes=deep, upload=True)
+        await self.add_H(self, complexes=deep, upload=True)
 
-
-    def add_H(self, request, complexes=None, upload=False):
+    @async_callback
+    async def add_H(self, request, complexes=None, upload=False):
         Logs.debug('Add Hs')
         to_be_Hd = complexes if complexes else request.get_args()
         for complex in to_be_Hd:
             # nanome complex -> pdb -> rdkit molecule
-            pdb = complex.io.to_pdb(self.input_file, PDBOptions)
-            rdmol = Chem.rdmolfiles.MolFromPDBFile(pdb)
-            # add Hs to rdkit molecule
-            Chem.AddHs(rdmol)
-            Chem.rdmolfiles.MolToPDBFile(mol, self.output_file.name)
+            complex.io.to_pdb(self.input_file.name, PDBOptions)
+            rdmol = Chem.rdmolfiles.MolFromPDBFile(self.input_file.name)
+            # +Hs
+            rdmol = Chem.AddHs(rdmol, addCoords=True, addResidueInfo=False)
             # rdkit molecule -> pdb -> nanome complex
-            H_complex = nanome.Complex.io.from_pdb(self.output_file.name)
-            H_complex.index = complex.index
+            Chem.rdmolfiles.MolToPDBFile(rdmol, self.output_file.name)
+            H_complex = nanome.structure.Complex.io.from_pdb(path=self.output_file.name)
+            await self.add_bonds([H_complex])
+            utils.reidentify(H_complex, complex)
 
             # upload
             if upload:
                 self.update_structures_deep([H_complex])
 
-    def rem_H(self, request, complexes=None, upload=False):
+        return [H_complex]
+
+    @async_callback
+    async def rem_H(self, request, complexes=None, upload=False):
         Logs.debug('Remove Hs')
         to_be_unHd = complexes if complexes else request.get_args()
-        for complex in self.to_be_unHd:
+        for complex in to_be_unHd:
             # nanome complex -> pdb -(remove Hs)-> rdkit molecule
-            pdb = complex.io.to_pdb(self.input_file, PDBOptions)
-            rdmol = Chem.rdmolfiles.MolFromPDBFile(pdb, removeHs=True)
+            complex.io.to_pdb(self.input_file.name, PDBOptions)
+            rdmol = Chem.rdmolfiles.MolFromPDBFile(self.input_file.name, removeHs=True)
             # rdkit molecule -> pdb -> nanome complex
             Chem.rdmolfiles.MolToPDBFile(rdmol, self.output_file.name)
-            NH_complex = nanome.Complex.io.from_pdb(self.output_file.name)
-            NH_complex.index = complex.index
+            NH_complex = nanome.structure.Complex.io.from_pdb(path=self.output_file.name)
+            await self.add_bonds([NH_complex])
+            # utils.reidentify(NH_complex, complex)
 
             # upload
             if upload:
                 self.update_structures_deep([NH_complex])
+        return [NH_complex]
 
     def on_stop(self):
-        shutil.rmtree(self.temp_dir.name)
+        self.temp_dir.cleanup()
 
 def main():
     plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False, integrations=[Integrations.hydrogen])
