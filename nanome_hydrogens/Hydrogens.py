@@ -7,7 +7,6 @@ from .ComplexUtils import ComplexUtils as utils
 PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
 PDBOptions.write_bonds = True
 
-
 class Hydrogens(nanome.AsyncPluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -45,6 +44,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
     async def add_hydrogens(self, request, complexes=None, upload=False):
         Logs.debug('Add H')
         new_complexes = await self.run_hydrogens('-add', request, complexes, upload, err_message="Could not add hydrogens.")
+        utils.markPolarHydrogens(new_complexes[0])
         return new_complexes
 
     @async_callback
