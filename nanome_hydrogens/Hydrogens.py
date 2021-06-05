@@ -44,7 +44,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
     async def add_hydrogens(self, request, complexes=None, upload=False):
         Logs.debug('Add H')
         new_complexes = await self.run_hydrogens('-add', request, complexes, upload, err_message="Could not add hydrogens.")
-        utils.markPolarHydrogens(new_complexes[0])
+        for complex in new_complexes:
+            utils.markPolarHydrogens(complex)
         return new_complexes
 
     @async_callback

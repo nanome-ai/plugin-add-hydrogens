@@ -61,7 +61,7 @@ class ComplexUtils:
                 eN_diff = abs(eN1-eN2)
                 if (eN_diff > 0.4 and eN_diff <= 1.8):
                     atom1.polar_hydrogen = atom1.symbol == 'H'
-                    atom2.polar_hydrogen = atom1.symbol == 'H'
+                    atom2.polar_hydrogen = atom2.symbol == 'H'
 
     @staticmethod
     def reidentify(target, source):
