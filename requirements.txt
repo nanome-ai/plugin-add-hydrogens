@@ -1,1 +1,1 @@
-nanome
+git+git://github.com/nanome-ai/nanome-lib@polarHydrogenFlag#egg=nanome
