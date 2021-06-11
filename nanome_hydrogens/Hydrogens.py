@@ -97,7 +97,7 @@ def create_process(path, args):
     return p
 
 def main():
-    plugin = nanome.Plugin('Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False, integrations=[Integrations.hydrogen])
+    plugin = nanome.Plugin('(Polar) Hydrogens', 'A nanome integration plugin to add and remove hydrogens to/from structures', 'Hydrogens', False, integrations=[Integrations.hydrogen])
     plugin.set_plugin_class(Hydrogens)
     plugin.run()
 
