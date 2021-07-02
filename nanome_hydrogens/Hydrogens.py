@@ -4,13 +4,10 @@ from nanome.util import async_callback, Logs, Process
 from nanome.util.enums import Integrations, NotificationTypes
 from .ComplexUtils import ComplexUtils as utils
 
-PDBOptions = nanome.util.complex_save_options.PDBSaveOptions()
-PDBOptions.write_bonds = True
-
 class Hydrogens(nanome.AsyncPluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdb', dir=self.temp_dir.name)
+        self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
         self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
         self.integration.hydrogen_add = self.add_hydrogens
         self.integration.hydrogen_remove = self.remove_hydrogens
@@ -58,7 +55,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         to_update = request.get_args() if request else complexes
 
         for ci, complex in enumerate(to_update):
-            complex.io.to_pdb(self.input_file.name, PDBOptions)
+            complex.io.to_sdf(self.input_file.name)
 
             p = Process()
             p.executable_path = 'nanobabel'
