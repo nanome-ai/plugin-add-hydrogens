@@ -59,11 +59,14 @@ class Hydrogens(nanome.AsyncPluginInstance):
             self.send_notification(enums.NotificationTypes.warning, 'Please select a complex.')
             return
 
+        self.set_plugin_list_button(enums.PluginListButtonType.run, 'Running...', False)
+
         # get selected complexes and add hydrogens
         deep = await self.request_complexes(indices_selected)
         result = await self.add_hydrogens(complexes=deep)
         self.update_structures_deep(result)
 
+        self.set_plugin_list_button(enums.PluginListButtonType.run, 'Run', True)
         self.send_notification(enums.NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
 
     def on_stop(self):
