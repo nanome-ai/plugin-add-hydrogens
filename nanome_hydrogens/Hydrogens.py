@@ -1,8 +1,7 @@
 import nanome
 import tempfile
 from nanome.api.structure import Complex
-from nanome.util import async_callback, Logs, Process
-from nanome.util.enums import HorizAlignOptions, Integrations, NotificationTypes, VertAlignOptions
+from nanome.util import async_callback, enums, Logs, Process
 
 def get_position_key(atom):
     return tuple(map(lambda x: int(50 * round(x, 4)), atom.position))
@@ -12,25 +11,30 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
         self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
+
+        self.set_plugin_list_button(enums.PluginListButtonType.advanced_settings, 'pH Settings')
         self.integration.hydrogen_add = self.add_hydrogens
         self.integration.hydrogen_remove = self.remove_hydrogens
         self.ph = '7.4'
 
+        self.create_settings_menu()
+
+    def create_settings_menu(self):
         menu = nanome.ui.Menu()
         self.menu = menu
 
         menu.title = 'Settings'
         menu.width = 0.5
-        menu.height = 0.3
+        menu.height = 0.2
 
         menu.root.layout_orientation = menu.root.LayoutTypes.horizontal
         menu.root.padding_type = menu.root.PaddingTypes.ratio
-        menu.root.set_padding(top=0.2, down=0.2, left=0.05, right=0.05)
+        menu.root.set_padding(top=0.25, down=0.25, left=0.05, right=0.05)
 
         ln_lbl = menu.root.create_child_node()
         lbl = ln_lbl.add_new_label('pH')
-        lbl.text_horizontal_align = HorizAlignOptions.Middle
-        lbl.text_vertical_align = VertAlignOptions.Middle
+        lbl.text_horizontal_align = enums.HorizAlignOptions.Middle
+        lbl.text_vertical_align = enums.VertAlignOptions.Middle
 
         ln_inp = menu.root.create_child_node()
         ln_inp.forward_dist = 0.001
@@ -52,7 +56,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         indices_selected = [c.index for c in shallow if c.get_selected()]
 
         if not indices_selected:
-            self.send_notification(NotificationTypes.warning, 'Please select a complex.')
+            self.send_notification(enums.NotificationTypes.warning, 'Please select a complex.')
             return
 
         # get selected complexes and add hydrogens
@@ -60,7 +64,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         result = await self.add_hydrogens(complexes=deep)
         self.update_structures_deep(result)
 
-        self.send_notification(NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
+        self.send_notification(enums.NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
 
     def on_stop(self):
         self.temp_dir.cleanup()
@@ -139,7 +143,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         # if error, notify user and return
         exit_code = await p.start()
         if exit_code:
-            self.send_notification(NotificationTypes.error, 'Error computing hydrogens')
+            self.send_notification(enums.NotificationTypes.error, 'Error computing hydrogens')
             return
 
         return Complex.io.from_sdf(path=self.output_file.name)
@@ -190,7 +194,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
 
 def main():
-    integrations = [Integrations.hydrogen]
+    integrations = [enums.Integrations.hydrogen]
     plugin = nanome.Plugin('Hydrogens', 'A Nanome Plugin to add/remove hydrogens to/from structures', 'Hydrogens', True, integrations=integrations)
     plugin.set_plugin_class(Hydrogens)
     plugin.run()
