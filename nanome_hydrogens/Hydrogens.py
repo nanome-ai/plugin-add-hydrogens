@@ -116,7 +116,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         for complex in complexes:
             for atom in list(complex.atoms):
-                if atom.symbol != 'H':
+                if atom.symbol != 'H' or not atom.selected:
                     continue
 
                 residue = atom.residue
