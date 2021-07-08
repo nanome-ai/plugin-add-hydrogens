@@ -4,6 +4,16 @@ from nanome.api.structure import Complex
 from nanome.util import async_callback, enums, Logs, Process
 
 def get_position_key(atom):
+    """
+    Get atom position as tuple of integers to be used as lookup key.
+    Rounds the coordinates to 4 decimal places before multiplying by 50
+    to get unique integer-space coordinates, and avoid floating point errors.
+
+    :param atom: Atom to get key for
+    :type atom: :class:`nanome.structure.Atom`
+    :return: Position key tuple
+    :rtype: (int, int, int)
+    """
     return tuple(map(lambda x: int(50 * round(x, 4)), atom.position))
 
 class Hydrogens(nanome.AsyncPluginInstance):
@@ -151,8 +161,17 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         return Complex.io.from_sdf(path=self.output_file.name)
 
-    # match and add hydrogens to original complex by atom serial
     def match_and_update(self, atom_by_position, result_complex, polar=False):
+        """
+        Match and add hydrogens to original complex using positions to match.
+
+        :param atom_by_position: dict mapping position key to atom in source complex
+        :type atom_by_position: dict
+        :param result_complex: Output complex from hydrogens calculation
+        :type result_complex: :class:`nanome.structure.Complex`
+        :param polar: If true, update hydrogens as polar, otherwise add hydrogens to source complex, defaults to False
+        :type polar: bool, optional
+        """
         for atom in result_complex.atoms:
             if atom.symbol != 'H':
                 continue
