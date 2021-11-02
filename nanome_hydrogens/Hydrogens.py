@@ -1,7 +1,8 @@
 import nanome
 import tempfile
 from nanome.api.structure import Complex
-from nanome.util import async_callback, enums, Logs, Process
+from nanome.util import async_callback, enums, Logs, Process, Color
+from nanome.api.shapes import Anchor, Label, Shape
 
 def get_position_key(atom):
     """
@@ -34,27 +35,54 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.menu = menu
 
         menu.title = 'Settings'
-        menu.width = 0.5
-        menu.height = 0.2
+        menu.width = 0.8
+        menu.height = 0.8
 
-        menu.root.layout_orientation = menu.root.LayoutTypes.horizontal
+        menu.root.layout_orientation = menu.root.LayoutTypes.vertical
         menu.root.padding_type = menu.root.PaddingTypes.ratio
-        menu.root.set_padding(top=0.25, down=0.25, left=0.05, right=0.05)
+        menu.root.set_padding(top=0.05, down=0.05, left=0.05, right=0.05)
 
-        ln_lbl = menu.root.create_child_node()
+        main = menu.root.create_child_node()
+        main.layout_orientation = main.LayoutTypes.horizontal
+
+        ln_lbl = main.create_child_node()
         lbl = ln_lbl.add_new_label('pH')
-        lbl.text_horizontal_align = enums.HorizAlignOptions.Middle
+        lbl.text_horizontal_align = enums.HorizAlignOptions.Left
         lbl.text_vertical_align = enums.VertAlignOptions.Middle
 
-        ln_inp = menu.root.create_child_node()
+        ln_inp = main.create_child_node()
         ln_inp.forward_dist = 0.001
         inp = ln_inp.add_new_text_input()
         inp.number = True
         inp.input_text = self.ph
 
+        main2 = menu.root.create_child_node()
+        main2.layout_orientation = main2.LayoutTypes.horizontal
+
+        ln_lbl2 = main2.create_child_node()
+        ln_lbl2.text_horizontal_align = enums.HorizAlignOptions.Left
+        ln_lbl2.text_vertical_align = enums.VertAlignOptions.Middle
+        lbl2 = ln_lbl2.add_new_label("Formal\ncharges\nlabels")
+        lbl2.text_auto_size = False
+        lbl2.text_size = 0.5
+
+        ln_lbl3 = main2.create_child_node()
+        ln_lbl3.padding_type = ln_lbl3.PaddingTypes.fixed
+        ln_lbl3.padding = (0.1, 0.1, 0.1, 0.1)
+        lbl3 = ln_lbl3.add_new_toggle_switch("")
+        lbl3.forward_dist = 0.001
+        lbl3.selected = False
+
+        self.formal_charges_labels = False
+
         def change_ph(input):
             self.ph = input.input_text
         inp.register_changed_callback(change_ph)
+
+        def set_formal_charges(input):
+            self.formal_charges_labels = input.selected
+
+        lbl3.register_pressed_callback(set_formal_charges)
 
     def on_advanced_settings(self):
         self.menu.enabled = True
@@ -74,7 +102,10 @@ class Hydrogens(nanome.AsyncPluginInstance):
         # get selected complexes and add hydrogens
         deep = await self.request_complexes(indices_selected)
         result = await self.add_hydrogens(complexes=deep)
-        self.update_structures_deep(result)
+        await self.update_structures_deep(result)
+
+        if self.formal_charges_labels:
+            self.add_formal_charge_labels(indices_selected)
 
         self.set_plugin_list_button(enums.PluginListButtonType.run, 'Run', True)
         self.send_notification(enums.NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
@@ -207,13 +238,36 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 residue.add_atom(new_atom)
                 residue.add_bond(new_bond)
 
-            else:
+            else: 
                 for bond in source_atom.bonds:
                     if bond.atom1.symbol == 'H':
                         bond.atom1.polar_hydrogen = True
                     if bond.atom2.symbol == 'H':
                         bond.atom2.polar_hydrogen = True
 
+    def formal_charge_label(self, atom, text):
+        label = Label()
+        anchor = Anchor()
+        anchor.anchor_type = nanome.util.enums.ShapeAnchorType.Atom
+        anchor.target = atom.index
+        anchor.viewer_offset = nanome.util.Vector3(0, 0, -.01)
+        anchor.local_offset = nanome.util.Vector3(0, 0, 0)
+
+        label.anchors = [anchor]
+        label.text = text
+        label.font_size = 0.05
+        label.color = Color.Black()
+        return label
+
+    @async_callback
+    async def add_formal_charge_labels(self, indices):
+        deep = await self.request_complexes(indices)
+        labels = []
+        for c in deep:
+            for a in c.atoms:
+                if a.polar_hydrogen:
+                    labels.append(self.formal_charge_label(a, "Polar!"))
+        Shape.upload_multiple(labels)
 
 def main():
     integrations = [enums.Integrations.hydrogen]
