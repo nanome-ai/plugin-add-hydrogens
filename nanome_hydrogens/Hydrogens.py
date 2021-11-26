@@ -255,6 +255,21 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         label.anchors = [anchor]
         label.text = text
+        label.font_size = 0.1
+        label.color = Color.Black()
+        return label
+
+    def bond_type_label(self, bond):
+        label = Label()
+        anchor = Anchor()
+        anchor.anchor_type = nanome.util.enums.ShapeAnchorType.Atom
+        anchor.target = bond.atom1.index
+        offset = (bond.atom2.position - bond.atom1.position) * 0.5
+        anchor.viewer_offset = nanome.util.Vector3(0, 0, -.01)
+        anchor.local_offset = offset#nanome.util.Vector3(0, 0, 0)
+
+        label.anchors = [anchor]
+        label.text = str(bond.kind).replace("Kind.Covalent", "")
         label.font_size = 0.05
         label.color = Color.Black()
         return label
@@ -267,6 +282,11 @@ class Hydrogens(nanome.AsyncPluginInstance):
             for a in c.atoms:
                 if a.polar_hydrogen:
                     labels.append(self.formal_charge_label(a, "Polar!"))
+            # for b in c.bonds:
+            #     label = self.bond_type_label(b)
+            #     if label.text != "Single":
+            #         labels.append(label)
+
         Shape.upload_multiple(labels)
 
 def main():
