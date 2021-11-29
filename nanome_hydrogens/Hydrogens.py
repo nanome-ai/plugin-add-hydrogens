@@ -11,8 +11,10 @@ PDBOptions.write_bonds = True
 class Hydrogens(nanome.AsyncPluginInstance):
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
-        self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb", dir=self.temp_dir.name)
+        self.input_file_rm = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
+        self.output_file_rm = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
+        self.input_file_add = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
+        self.output_file_add = tempfile.NamedTemporaryFile(delete=False, suffix=".sdf", dir=self.temp_dir.name)
         self.processes = []
         self.integration.hydrogen_add = self.add_H
         self.integration.hydrogen_remove = self.rem_H
@@ -35,15 +37,18 @@ class Hydrogens(nanome.AsyncPluginInstance):
         Logs.debug('Add Hs')
         to_be_Hd = complexes if complexes else request.get_args()
         for complex in to_be_Hd:
-            # nanome complex -> pdb -> rdkit molecule
-            complex.io.to_pdb(self.input_file.name, PDBOptions)
-            rdmol = Chem.rdmolfiles.MolFromPDBFile(self.input_file.name)
+            # nanome complex -> sdf -> rdkit molecule
+            complex.io.to_sdf(self.input_file_add.name)
+            rdmol = Chem.SDMolSupplier(self.input_file_add.name, removeHs=True)[0]
             # +Hs
             rdmol = Chem.AddHs(rdmol, addCoords=True, addResidueInfo=False)
-            # rdkit molecule -> pdb -> nanome complex
-            Chem.rdmolfiles.MolToPDBFile(rdmol, self.output_file.name)
-            H_complex = nanome.structure.Complex.io.from_pdb(path=self.output_file.name)
-            await self.add_bonds([H_complex])
+            # rdkit molecule -> sdf -> nanome complex
+            sdw = Chem.SDWriter(self.output_file_add.name)
+            sdw.write(rdmol)
+            sdw.close()
+            H_complex = nanome.structure.Complex.io.from_sdf(path=self.output_file_add.name)
+
+            #await self.add_bonds([H_complex])
             utils.reidentify(H_complex, complex)
 
             # upload
@@ -57,14 +62,17 @@ class Hydrogens(nanome.AsyncPluginInstance):
         Logs.debug('Remove Hs')
         to_be_unHd = complexes if complexes else request.get_args()
         for complex in to_be_unHd:
-            # nanome complex -> pdb -(remove Hs)-> rdkit molecule
-            complex.io.to_pdb(self.input_file.name, PDBOptions)
-            rdmol = Chem.rdmolfiles.MolFromPDBFile(self.input_file.name, removeHs=True)
-            # rdkit molecule -> pdb -> nanome complex
-            Chem.rdmolfiles.MolToPDBFile(rdmol, self.output_file.name)
-            NH_complex = nanome.structure.Complex.io.from_pdb(path=self.output_file.name)
-            await self.add_bonds([NH_complex])
-            # utils.reidentify(NH_complex, complex)
+            # nanome complex -> sdf -(remove Hs)-> rdkit molecule
+            complex.io.to_sdf(self.input_file_rm.name)
+            rdmol = Chem.SDMolSupplier(self.input_file_rm.name, removeHs=True)[0]
+            # rdkit molecule -> sdf -> nanome complex
+            sdw = Chem.SDWriter(self.output_file_rm.name)
+            sdw.write(rdmol)
+            sdw.close()
+            NH_complex = nanome.structure.Complex.io.from_sdf(path=self.output_file_rm.name)
+            
+            # await self.add_bonds([NH_complex])
+            utils.reidentify(NH_complex, complex)
 
             # upload
             if upload:
