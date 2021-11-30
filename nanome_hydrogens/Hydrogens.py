@@ -24,6 +24,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
     @classmethod
     def _fill_atom_valence_table(cls):
         cls._group_to_valence = {1:1, 2:2, 13:3, 14:4, 15:5, 16:6, 17:7, 18:8}
+        cls._group_to_shell = {1:2, 2:2, 13:8, 14:8, 15:8, 16:8, 17:8, 18:8}
         cls._atom_group["xx"] = 18
         cls._atom_group["h"] = 1
         cls._atom_group["he"] = 18
@@ -416,13 +417,16 @@ class Hydrogens(nanome.AsyncPluginInstance):
             #         labels.append(label)
             for a in c.atoms:
                 if a in formal_charges:
-                    if a.symbol == "H":
+                    if formal_charges[a] != 0:
                         s_formal_charge = str(formal_charges[a])
                         labels.append(self.formal_charge_label(a, s_formal_charge))
                         a.labelled = True
 
-
-        Shape.upload_multiple(labels)
+        if len(labels) > 0:
+            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(labels))+' labels')
+            Shape.upload_multiple(labels)
+        else:
+            self.send_notification(enums.NotificationTypes.warning, 'No label added')
 
     def compute_formal_charges(self, complexes):
         if len(Hydrogens._atom_group) < 1:
@@ -440,8 +444,10 @@ class Hydrogens(nanome.AsyncPluginInstance):
                     Logs.warning("Atom",a.symbol,"unknown valence electron")
                     continue
                 v_e = Hydrogens._group_to_valence[group]
+                v_shell = Hydrogens._group_to_shell[group]
                 n_bonds = self.count_bonded_electrons(a.bonds)
-                formal_charges[a] = v_e - n_bonds
+                lone = v_shell - 2 * n_bonds
+                formal_charges[a] = v_e - n_bonds - lone
         return formal_charges
 
 
