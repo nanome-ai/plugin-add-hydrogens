@@ -3,6 +3,7 @@ import tempfile
 from nanome.api.structure import Complex
 from nanome.util import async_callback, enums, Logs, Process, Color
 from nanome.api.shapes import Anchor, Label, Shape
+from nanome._internal._structure._bond import _Bond
 
 def get_position_key(atom):
     """
@@ -18,6 +19,131 @@ def get_position_key(atom):
     return tuple(map(lambda x: int(50 * round(x, 4)), atom.position))
 
 class Hydrogens(nanome.AsyncPluginInstance):
+    _atom_group = {}
+
+    @classmethod
+    def _fill_atom_valence_table(cls):
+        cls._group_to_valence = {1:1, 2:2, 13:3, 14:4, 15:5, 16:6, 17:7, 18:8}
+        cls._atom_group["xx"] = 18
+        cls._atom_group["h"] = 1
+        cls._atom_group["he"] = 18
+        cls._atom_group["li"] = 1
+        cls._atom_group["be"] = 2
+        cls._atom_group["b"] = 13
+        cls._atom_group["c"] = 14
+        cls._atom_group["n"] = 15
+        cls._atom_group["o"] = 16
+        cls._atom_group["f"] = 17
+        cls._atom_group["ne"] = 18
+        cls._atom_group["na"] = 1
+        cls._atom_group["mg"] = 2
+        cls._atom_group["al"] = 13
+        cls._atom_group["si"] = 14
+        cls._atom_group["p"] = 15
+        cls._atom_group["s"] = 16
+        cls._atom_group["cl"] = 17
+        cls._atom_group["ar"] = 18
+        cls._atom_group["k"] = 1
+        cls._atom_group["ca"] = 2
+        cls._atom_group["sc"] = 3
+        cls._atom_group["ti"] = 4
+        cls._atom_group["v"] = 5
+        cls._atom_group["cr"] = 6
+        cls._atom_group["mn"] = 7
+        cls._atom_group["fe"] = 8
+        cls._atom_group["co"] = 9
+        cls._atom_group["ni"] = 10
+        cls._atom_group["cu"] = 11
+        cls._atom_group["zn"] = 12
+        cls._atom_group["ga"] = 13
+        cls._atom_group["ge"] = 14
+        cls._atom_group["as"] = 15
+        cls._atom_group["se"] = 16
+        cls._atom_group["br"] = 17
+        cls._atom_group["kr"] = 18
+        cls._atom_group["rb"] = 1
+        cls._atom_group["sr"] = 2
+        cls._atom_group["y"] = 3
+        cls._atom_group["zr"] = 4
+        cls._atom_group["nb"] = 5
+        cls._atom_group["mo"] = 6
+        cls._atom_group["tc"] = 7
+        cls._atom_group["ru"] = 8
+        cls._atom_group["rh"] = 9
+        cls._atom_group["pd"] = 10
+        cls._atom_group["ag"] = 11
+        cls._atom_group["cd"] = 12
+        cls._atom_group["in"] = 13
+        cls._atom_group["sn"] = 14
+        cls._atom_group["sb"] = 15
+        cls._atom_group["te"] = 16
+        cls._atom_group["i"] = 17
+        cls._atom_group["xe"] = 18
+        cls._atom_group["cs"] = 1
+        cls._atom_group["ba"] = 2
+        cls._atom_group["la"] = 3
+        cls._atom_group["ce"] = 4
+        cls._atom_group["pr"] = 5
+        cls._atom_group["nd"] = 6
+        cls._atom_group["pm"] = 7
+        cls._atom_group["sm"] = 8
+        cls._atom_group["eu"] = 9
+        cls._atom_group["gd"] = 10
+        cls._atom_group["tb"] = 11
+        cls._atom_group["dy"] = 12
+        cls._atom_group["ho"] = 13
+        cls._atom_group["er"] = 14
+        cls._atom_group["tm"] = 15
+        cls._atom_group["yb"] = 16
+        cls._atom_group["lu"] = 17
+        cls._atom_group["hf"] = 4
+        cls._atom_group["ta"] = 5
+        cls._atom_group["w"] = 6
+        cls._atom_group["re"] = 7
+        cls._atom_group["os"] = 8
+        cls._atom_group["ir"] = 9
+        cls._atom_group["pt"] = 10
+        cls._atom_group["au"] = 11
+        cls._atom_group["hg"] = 12
+        cls._atom_group["tl"] = 13
+        cls._atom_group["pb"] = 14
+        cls._atom_group["bi"] = 15
+        cls._atom_group["po"] = 16
+        cls._atom_group["at"] = 17
+        cls._atom_group["rn"] = 18
+        cls._atom_group["fr"] = 1
+        cls._atom_group["ra"] = 2
+        cls._atom_group["ac"] = 3
+        cls._atom_group["th"] = 4
+        cls._atom_group["pa"] = 5
+        cls._atom_group["u"] = 6
+        cls._atom_group["np"] = 7
+        cls._atom_group["pu"] = 8
+        cls._atom_group["am"] = 9
+        cls._atom_group["cm"] = 10
+        cls._atom_group["bk"] = 11
+        cls._atom_group["cf"] = 12
+        cls._atom_group["es"] = 13
+        cls._atom_group["fm"] = 14
+        cls._atom_group["md"] = 15
+        cls._atom_group["no"] = 16
+        cls._atom_group["lr"] = 17
+        cls._atom_group["rf"] = 4
+        cls._atom_group["db"] = 5
+        cls._atom_group["sg"] = 6
+        cls._atom_group["bh"] = 7
+        cls._atom_group["hs"] = 8
+        cls._atom_group["mt"] = 9
+        cls._atom_group["ds"] = 10
+        cls._atom_group["rg"] = 11
+        cls._atom_group["cn"] = 12
+        cls._atom_group["nh"] = 13
+        cls._atom_group["fl"] = 14
+        cls._atom_group["mc"] = 15
+        cls._atom_group["lv"] = 16
+        cls._atom_group["ts"] = 17
+        cls._atom_group["og"] = 18
+
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
@@ -73,7 +199,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         lbl3.forward_dist = 0.001
         lbl3.selected = False
 
-        self.formal_charges_labels = False
+        self.formal_charges_labels = True
 
         def change_ph(input):
             self.ph = input.input_text
@@ -277,17 +403,62 @@ class Hydrogens(nanome.AsyncPluginInstance):
     @async_callback
     async def add_formal_charge_labels(self, indices):
         deep = await self.request_complexes(indices)
+        formal_charges = self.compute_formal_charges(deep)
         labels = []
         for c in deep:
-            for a in c.atoms:
-                if a.polar_hydrogen:
-                    labels.append(self.formal_charge_label(a, "Polar!"))
+            # for a in c.atoms:
+            #     if a.polar_hydrogen:
+            #         labels.append(self.formal_charge_label(a, "Polar!"))
+            #         a.labelled = True
             # for b in c.bonds:
             #     label = self.bond_type_label(b)
             #     if label.text != "Single":
             #         labels.append(label)
+            for a in c.atoms:
+                if a in formal_charges:
+                    if a.symbol == "H":
+                        s_formal_charge = str(formal_charges[a])
+                        labels.append(self.formal_charge_label(a, s_formal_charge))
+                        a.labelled = True
+
 
         Shape.upload_multiple(labels)
+
+    def compute_formal_charges(self, complexes):
+        if len(Hydrogens._atom_group) < 1:
+            Hydrogens._fill_atom_valence_table()
+
+        formal_charges = {}
+        for c in complexes:
+            for a in c.atoms:
+                atom_symbol = a.symbol.lower()
+                if atom_symbol not in Hydrogens._atom_group:
+                    Logs.warning("Unkown atom",a.symbol)
+                    continue
+                group = Hydrogens._atom_group[atom_symbol]
+                if group not in Hydrogens._group_to_valence:
+                    Logs.warning("Atom",a.symbol,"unknown valence electron")
+                    continue
+                v_e = Hydrogens._group_to_valence[group]
+                n_bonds = self.count_bonded_electrons(a.bonds)
+                formal_charges[a] = v_e - n_bonds
+        return formal_charges
+
+
+    def count_bonded_electrons(self, bonds):
+        count = 0
+        for b in bonds:
+            if b.kind == _Bond.Kind.CovalentSingle:
+                count += 1
+            if b.kind == _Bond.Kind.CovalentDouble:
+                count +=2
+            if b.kind == _Bond.Kind.CovalentTriple:
+                count +=3
+        return count
+            
+                
+                
+                
 
 def main():
     integrations = [enums.Integrations.hydrogen]
