@@ -370,13 +370,18 @@ class Hydrogens(nanome.AsyncPluginInstance):
                     continue
                 
                 va_e = Hydrogens._valence_atoms[atom_symbol]
-                #Not D orbital (most of cases)
                 n_bonds = self.count_bonded_electrons(a.bonds)
-                non_b_e = (8 - va_e) - n_bonds
                 
-                #D orbital (Phosphate / Sulfate / Silica ...)
-                if n_bonds > (8 - va_e) and non_b_e%2 == 0 and atom_symbol in ["p", "s", "ar", "si", "kr", "xe"]:
-                    non_b_e = 0
+                if atom_symbol == "h":
+                    non_b_e = va_e - n_bonds
+                else:
+                    #Not D orbital (most of cases)
+                    
+                    non_b_e = (8 - va_e) - n_bonds
+                    
+                    #D orbital (Phosphate / Sulfate / Silica ...)
+                    if n_bonds > (8 - va_e) and non_b_e%2 == 0 and atom_symbol in ["p", "s", "ar", "si", "kr", "xe"]:
+                        non_b_e = 0
 
                 formal_charges[a] = -non_b_e
 
