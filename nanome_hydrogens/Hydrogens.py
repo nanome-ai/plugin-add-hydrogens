@@ -19,131 +19,60 @@ def get_position_key(atom):
     return tuple(map(lambda x: int(50 * round(x, 4)), atom.position))
 
 class Hydrogens(nanome.AsyncPluginInstance):
-    _atom_group = {}
+    _valence_atoms = {}
 
     @classmethod
     def _fill_atom_valence_table(cls):
-        cls._group_to_valence = {1:1, 2:2, 13:3, 14:4, 15:5, 16:6, 17:7, 18:8}
-        cls._group_to_shell = {1:2, 2:2, 13:8, 14:8, 15:8, 16:8, 17:8, 18:8}
-        cls._atom_group["xx"] = 18
-        cls._atom_group["h"] = 1
-        cls._atom_group["he"] = 18
-        cls._atom_group["li"] = 1
-        cls._atom_group["be"] = 2
-        cls._atom_group["b"] = 13
-        cls._atom_group["c"] = 14
-        cls._atom_group["n"] = 15
-        cls._atom_group["o"] = 16
-        cls._atom_group["f"] = 17
-        cls._atom_group["ne"] = 18
-        cls._atom_group["na"] = 1
-        cls._atom_group["mg"] = 2
-        cls._atom_group["al"] = 13
-        cls._atom_group["si"] = 14
-        cls._atom_group["p"] = 15
-        cls._atom_group["s"] = 16
-        cls._atom_group["cl"] = 17
-        cls._atom_group["ar"] = 18
-        cls._atom_group["k"] = 1
-        cls._atom_group["ca"] = 2
-        cls._atom_group["sc"] = 3
-        cls._atom_group["ti"] = 4
-        cls._atom_group["v"] = 5
-        cls._atom_group["cr"] = 6
-        cls._atom_group["mn"] = 7
-        cls._atom_group["fe"] = 8
-        cls._atom_group["co"] = 9
-        cls._atom_group["ni"] = 10
-        cls._atom_group["cu"] = 11
-        cls._atom_group["zn"] = 12
-        cls._atom_group["ga"] = 13
-        cls._atom_group["ge"] = 14
-        cls._atom_group["as"] = 15
-        cls._atom_group["se"] = 16
-        cls._atom_group["br"] = 17
-        cls._atom_group["kr"] = 18
-        cls._atom_group["rb"] = 1
-        cls._atom_group["sr"] = 2
-        cls._atom_group["y"] = 3
-        cls._atom_group["zr"] = 4
-        cls._atom_group["nb"] = 5
-        cls._atom_group["mo"] = 6
-        cls._atom_group["tc"] = 7
-        cls._atom_group["ru"] = 8
-        cls._atom_group["rh"] = 9
-        cls._atom_group["pd"] = 10
-        cls._atom_group["ag"] = 11
-        cls._atom_group["cd"] = 12
-        cls._atom_group["in"] = 13
-        cls._atom_group["sn"] = 14
-        cls._atom_group["sb"] = 15
-        cls._atom_group["te"] = 16
-        cls._atom_group["i"] = 17
-        cls._atom_group["xe"] = 18
-        cls._atom_group["cs"] = 1
-        cls._atom_group["ba"] = 2
-        cls._atom_group["la"] = 3
-        cls._atom_group["ce"] = 4
-        cls._atom_group["pr"] = 5
-        cls._atom_group["nd"] = 6
-        cls._atom_group["pm"] = 7
-        cls._atom_group["sm"] = 8
-        cls._atom_group["eu"] = 9
-        cls._atom_group["gd"] = 10
-        cls._atom_group["tb"] = 11
-        cls._atom_group["dy"] = 12
-        cls._atom_group["ho"] = 13
-        cls._atom_group["er"] = 14
-        cls._atom_group["tm"] = 15
-        cls._atom_group["yb"] = 16
-        cls._atom_group["lu"] = 17
-        cls._atom_group["hf"] = 4
-        cls._atom_group["ta"] = 5
-        cls._atom_group["w"] = 6
-        cls._atom_group["re"] = 7
-        cls._atom_group["os"] = 8
-        cls._atom_group["ir"] = 9
-        cls._atom_group["pt"] = 10
-        cls._atom_group["au"] = 11
-        cls._atom_group["hg"] = 12
-        cls._atom_group["tl"] = 13
-        cls._atom_group["pb"] = 14
-        cls._atom_group["bi"] = 15
-        cls._atom_group["po"] = 16
-        cls._atom_group["at"] = 17
-        cls._atom_group["rn"] = 18
-        cls._atom_group["fr"] = 1
-        cls._atom_group["ra"] = 2
-        cls._atom_group["ac"] = 3
-        cls._atom_group["th"] = 4
-        cls._atom_group["pa"] = 5
-        cls._atom_group["u"] = 6
-        cls._atom_group["np"] = 7
-        cls._atom_group["pu"] = 8
-        cls._atom_group["am"] = 9
-        cls._atom_group["cm"] = 10
-        cls._atom_group["bk"] = 11
-        cls._atom_group["cf"] = 12
-        cls._atom_group["es"] = 13
-        cls._atom_group["fm"] = 14
-        cls._atom_group["md"] = 15
-        cls._atom_group["no"] = 16
-        cls._atom_group["lr"] = 17
-        cls._atom_group["rf"] = 4
-        cls._atom_group["db"] = 5
-        cls._atom_group["sg"] = 6
-        cls._atom_group["bh"] = 7
-        cls._atom_group["hs"] = 8
-        cls._atom_group["mt"] = 9
-        cls._atom_group["ds"] = 10
-        cls._atom_group["rg"] = 11
-        cls._atom_group["cn"] = 12
-        cls._atom_group["nh"] = 13
-        cls._atom_group["fl"] = 14
-        cls._atom_group["mc"] = 15
-        cls._atom_group["lv"] = 16
-        cls._atom_group["ts"] = 17
-        cls._atom_group["og"] = 18
+        cls._valence_atoms["h"] =  1
+        cls._valence_atoms["li"] =  1
+        cls._valence_atoms["be"] =  2
+        cls._valence_atoms["b"] =  3
+        cls._valence_atoms["c"] =  4
+        cls._valence_atoms["n"] =  5
+        cls._valence_atoms["o"] =  6
+        cls._valence_atoms["f"] =  7
+        cls._valence_atoms["ne"] =  8
+        cls._valence_atoms["na"] =  1
+        cls._valence_atoms["mg"] =  2
+        cls._valence_atoms["al"] =  3
+        cls._valence_atoms["si"] =  4
+        cls._valence_atoms["p"] =  5
+        cls._valence_atoms["s"] =  6
+        cls._valence_atoms["cl"] =  7
+        cls._valence_atoms["ar"] =  8
+        cls._valence_atoms["k"] =  1
+        cls._valence_atoms["ca"] =  2
+        cls._valence_atoms["ga"] =  3
+        cls._valence_atoms["ge"] =  4
+        cls._valence_atoms["as"] =  5
+        cls._valence_atoms["se"] =  6
+        cls._valence_atoms["br"] =  7
+        cls._valence_atoms["kr"] =  8
+        cls._valence_atoms["rb"] =  1
+        cls._valence_atoms["sr"] =  2
+        cls._valence_atoms["in"] =  3
+        cls._valence_atoms["sn"] =  4
+        cls._valence_atoms["sb"] =  5
+        cls._valence_atoms["te"] =  6
+        cls._valence_atoms["i"] =  7
+        cls._valence_atoms["xe"] =  8
+        cls._valence_atoms["cs"] =  1
+        cls._valence_atoms["ba"] =  2
+        cls._valence_atoms["tl"] =  3
+        cls._valence_atoms["pb"] =  4
+        cls._valence_atoms["bi"] =  5
+        cls._valence_atoms["po"] =  6
+        cls._valence_atoms["at"] =  7
+        cls._valence_atoms["rn"] =  8
+        cls._valence_atoms["fr"] =  1
+        cls._valence_atoms["ra"] =  2
+        cls._valence_atoms["nh"] =  3
+        cls._valence_atoms["fl"] =  4
+        cls._valence_atoms["mc"] =  5
+        cls._valence_atoms["lv"] =  6
+        cls._valence_atoms["ts"] =  7
+        cls._valence_atoms["og"] =  8
+        cls._valence_atoms["he"] =  2
 
     def start(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -429,25 +358,28 @@ class Hydrogens(nanome.AsyncPluginInstance):
             self.send_notification(enums.NotificationTypes.warning, 'No label added')
 
     def compute_formal_charges(self, complexes):
-        if len(Hydrogens._atom_group) < 1:
+        if len(Hydrogens._valence_atoms) < 1:
             Hydrogens._fill_atom_valence_table()
 
         formal_charges = {}
         for c in complexes:
             for a in c.atoms:
                 atom_symbol = a.symbol.lower()
-                if atom_symbol not in Hydrogens._atom_group:
+                if atom_symbol not in Hydrogens._valence_atoms:
                     Logs.warning("Unkown atom",a.symbol)
                     continue
-                group = Hydrogens._atom_group[atom_symbol]
-                if group not in Hydrogens._group_to_valence:
-                    Logs.warning("Atom",a.symbol,"unknown valence electron")
-                    continue
-                v_e = Hydrogens._group_to_valence[group]
-                v_shell = Hydrogens._group_to_shell[group]
+                
+                va_e = Hydrogens._valence_atoms[atom_symbol]
+                #Not D orbital (most of cases)
                 n_bonds = self.count_bonded_electrons(a.bonds)
-                lone = v_shell - 2 * n_bonds
-                formal_charges[a] = v_e - n_bonds - lone
+                non_b_e = (8 - va_e) - n_bonds
+                
+                #D orbital (Phosphate / Sulfate / Silica ...)
+                if n_bonds > (8 - va_e) and non_b_e%2 == 0 and atom_symbol in ["p", "s", "ar", "si", "kr", "xe"]:
+                    non_b_e = 0
+
+                formal_charges[a] = -non_b_e
+
         return formal_charges
 
 
