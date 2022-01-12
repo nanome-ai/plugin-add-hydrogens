@@ -5,6 +5,11 @@ from nanome.util import async_callback, enums, Logs, Process, Color
 from nanome.api.shapes import Anchor, Label, Shape
 from nanome._internal._structure._bond import _Bond
 
+from rdkit import Chem
+from rdkit.Chem import AllChem
+import psi4
+import resp
+
 def get_position_key(atom):
     """
     Get atom position as tuple of integers to be used as lookup key.
@@ -111,25 +116,49 @@ class Hydrogens(nanome.AsyncPluginInstance):
         inp = ln_inp.add_new_text_input()
         inp.number = True
         inp.input_text = self.ph
+        inp.sizing_value = 0.5
 
         main2 = menu.root.create_child_node()
         main2.layout_orientation = main2.LayoutTypes.horizontal
 
         ln_lbl2 = main2.create_child_node()
-        ln_lbl2.text_horizontal_align = enums.HorizAlignOptions.Left
+        ln_lbl2.text_horizontal_align = enums.HorizAlignOptions.Middle
         ln_lbl2.text_vertical_align = enums.VertAlignOptions.Middle
-        lbl2 = ln_lbl2.add_new_label("Formal\ncharges\nlabels")
+        ln_lbl2.padding_type = ln_lbl2.PaddingTypes.fixed
+        ln_lbl2.padding = (0.0, 0.0, 0.2, 0.0)
+        lbl2 = ln_lbl2.add_new_label("Formal charges labels")
         lbl2.text_auto_size = False
-        lbl2.text_size = 0.5
+        lbl2.text_size = 0.3
 
-        ln_lbl3 = main2.create_child_node()
+        ln_lbl4 = main2.create_child_node()
+        ln_lbl4.padding_type = ln_lbl4.PaddingTypes.fixed
+        ln_lbl4.padding = (0.0, 0.0, 0.2, 0.0)
+        ln_lbl4.text_horizontal_align = enums.HorizAlignOptions.Middle
+        ln_lbl4.text_vertical_align = enums.VertAlignOptions.Middle
+        lbl4 = ln_lbl4.add_new_label("Partial charges labels")
+        lbl4.text_auto_size = False
+        lbl4.text_size = 0.3
+
+        main3 = menu.root.create_child_node()
+        main3.layout_orientation = main3.LayoutTypes.horizontal
+
+        ln_lbl3 = main3.create_child_node()
         ln_lbl3.padding_type = ln_lbl3.PaddingTypes.fixed
-        ln_lbl3.padding = (0.1, 0.1, 0.1, 0.1)
+        ln_lbl3.padding = (0.0, 0.1, 0.1, 0.0)
         lbl3 = ln_lbl3.add_new_toggle_switch("")
-        lbl3.forward_dist = 0.001
+        ln_lbl3.forward_dist = 0.001
         lbl3.selected = False
 
-        self.formal_charges_labels = True
+        ln_lbl5 = main3.create_child_node()
+        ln_lbl5.padding_type = ln_lbl5.PaddingTypes.fixed
+        ln_lbl5.padding = (0.0, 0.1, 0.1, 0.0)
+        lbl5 = ln_lbl5.add_new_toggle_switch("")
+        ln_lbl5.forward_dist = 0.001
+        lbl5.selected = False
+        
+
+        self.formal_charges_labels = False
+        self.partial_charges_labels = False
 
         def change_ph(input):
             self.ph = input.input_text
@@ -138,7 +167,11 @@ class Hydrogens(nanome.AsyncPluginInstance):
         def set_formal_charges(input):
             self.formal_charges_labels = input.selected
 
+        def set_partial_charges(input):
+            self.partial_charges_labels = input.selected
+
         lbl3.register_pressed_callback(set_formal_charges)
+        lbl5.register_pressed_callback(set_partial_charges)
 
     def on_advanced_settings(self):
         self.menu.enabled = True
@@ -161,7 +194,9 @@ class Hydrogens(nanome.AsyncPluginInstance):
         await self.update_structures_deep(result)
 
         if self.formal_charges_labels:
-            self.add_formal_charge_labels(indices_selected)
+            self.add_formal_charges_labels(indices_selected)
+        if self.partial_charges_labels:
+            self.add_partial_charges_labels(indices_selected)
 
         self.set_plugin_list_button(enums.PluginListButtonType.run, 'Run', True)
         self.send_notification(enums.NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
@@ -301,7 +336,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
                     if bond.atom2.symbol == 'H':
                         bond.atom2.polar_hydrogen = True
 
-    def formal_charge_label(self, atom, text):
+    def charge_label(self, atom, text):
         label = Label()
         anchor = Anchor()
         anchor.anchor_type = nanome.util.enums.ShapeAnchorType.Atom
@@ -331,7 +366,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         return label
 
     @async_callback
-    async def add_formal_charge_labels(self, indices):
+    async def add_formal_charges_labels(self, indices):
         deep = await self.request_complexes(indices)
         formal_charges = self.compute_formal_charges(deep)
         labels = []
@@ -348,14 +383,38 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 if a in formal_charges:
                     if formal_charges[a] != 0:
                         s_formal_charge = str(formal_charges[a])
-                        labels.append(self.formal_charge_label(a, s_formal_charge))
+                        labels.append(self.charge_label(a, s_formal_charge))
                         a.labelled = True
 
         if len(labels) > 0:
             self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(labels))+' labels')
             Shape.upload_multiple(labels)
         else:
-            self.send_notification(enums.NotificationTypes.warning, 'No label added')
+            self.send_notification(enums.NotificationTypes.warning, 'No formal charges label added')
+
+
+    @async_callback
+    async def add_partial_charges_labels(self, indices):
+        deep = await self.request_complexes(indices)
+        partial_charges = self.compute_partial_charges(deep, "mmff")
+        # partial_charges = self.compute_partial_charges(deep, "gasteiger")
+        # partial_charges = self.compute_partial_charges(deep, "psi4")
+        labels = []
+        for c in deep:
+            idA = 0
+            p_c = partial_charges[c.index]
+            for a in c.atoms:
+                if p_c[idA] != 0:
+                    s_partial_charge = str(round(p_c[idA], 3))
+                    labels.append(self.charge_label(a, s_partial_charge))
+                    a.labelled = True
+                idA+=1
+
+        if len(labels) > 0:
+            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(labels))+' labels')
+            Shape.upload_multiple(labels)
+        else:
+            self.send_notification(enums.NotificationTypes.warning, 'No partial charges label added')
 
     def compute_formal_charges(self, complexes):
         if len(Hydrogens._valence_atoms) < 1:
@@ -387,6 +446,41 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         return formal_charges
 
+    def compute_partial_charges(self, complexes, method):
+        partial_charges = {}
+        Logs.message("Computing partial charges with method '", method+"'")
+
+        for c in complexes:
+            molecule = c._molecules[c.current_frame]
+            temp_sdf = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf')
+            c.io.to_sdf(temp_sdf.name)
+
+            rdmol = next(Chem.SDMolSupplier(temp_sdf.name, removeHs=False, sanitize=False))
+
+            if method == "gasteiger":
+                rdmol.UpdatePropertyCache(strict=False)
+                Chem.rdmolops.FastFindRings(rdmol)
+                AllChem.ComputeGasteigerCharges(rdmol)
+                charges = [a.GetDoubleProp('_GasteigerCharge') for a in rdmol.GetAtoms()]
+                partial_charges[c.index] = charges
+            elif method == "mmff":
+                rdmol.UpdatePropertyCache(strict=False)
+                Chem.rdmolops.FastFindRings(rdmol)
+                mp = AllChem.MMFFGetMoleculeProperties(rdmol)
+                charges = [mp.GetMMFFPartialCharge(i) for i in range(rdmol.GetNumAtoms())]
+                partial_charges[c.index] = charges
+
+            # TODO: fix this
+            # elif method == "psi4" or method == "resp":
+            #     if len(list(c.atoms)) > 30:
+            #         self.send_notification(enums.NotificationTypes.warning, 'Psi4 partial charges method will take a while...')
+
+            #     xyz = Chem.rdmolfiles.MolToXYZBlock(rdmol)
+            #     partial_charges[c.index] = psi4Charges(xyz)
+
+
+        return partial_charges
+
 
     def count_bonded_electrons(self, bonds):
         count = 0
@@ -398,10 +492,38 @@ class Hydrogens(nanome.AsyncPluginInstance):
             if b.kind == _Bond.Kind.CovalentTriple:
                 count +=3
         return count
-            
-                
-                
-                
+
+
+#From https://github.com/hesther/espsim
+def psi4Charges(xyz,
+                    basisPsi4 = '3-21G',
+                    methodPsi4 = 'scf',
+                    gridPsi4 = 1):
+    """
+    Calculates RESP charges via Psi4.
+    :param xyz: String of xyz file of an embedded molecule.
+    :param basisPsi4: (optional) Basis set.
+    :param methodPsi4: (optional) Method.
+    :param gridPsi4: (optional) Integer grid point density for ESP evaluation.
+    :return: Array of RESP partial charges.
+    """
+    Logs.message("Running psi4 resp...")
+    
+    mol = psi4.core.Molecule.from_string(xyz, dtype='xyz')
+    mol.update_geometry()
+
+    options = {'VDW_SCALE_FACTORS'  : [1.4, 1.6, 1.8, 2.0],
+                'VDW_POINT_DENSITY'  : int(gridPsi4),
+                'RESP_A'             : 0.0005,
+                'RESP_B'             : 0.1,
+                'BASIS_ESP' : basisPsi4,
+                'METHOD_ESP' : methodPsi4,
+    }
+
+    psi4.set_options({'reference': 'uhf'})
+    charge = resp.resp([mol], options)[1]
+    Logs.message("Done computing psi4 resp")
+    return charge
 
 def main():
     integrations = [enums.Integrations.hydrogen]
