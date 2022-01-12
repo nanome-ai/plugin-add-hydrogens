@@ -89,6 +89,9 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.integration.hydrogen_remove = self.remove_hydrogens
         self.ph = '7.4'
 
+        self.formal_labels = []
+        self.partial_labels = []
+
         self.create_settings_menu()
 
     def create_settings_menu(self):
@@ -165,9 +168,15 @@ class Hydrogens(nanome.AsyncPluginInstance):
         inp.register_changed_callback(change_ph)
 
         def set_formal_charges(input):
+            if len(self.formal_labels) > 0:
+                Shape.destroy_multiple(self.formal_labels)
+                self.formal_labels = []
             self.formal_charges_labels = input.selected
 
         def set_partial_charges(input):
+            if len(self.partial_labels) > 0:
+                Shape.destroy_multiple(self.partial_labels)
+                self.partial_labels = []
             self.partial_charges_labels = input.selected
 
         lbl3.register_pressed_callback(set_formal_charges)
@@ -369,7 +378,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
     async def add_formal_charges_labels(self, indices):
         deep = await self.request_complexes(indices)
         formal_charges = self.compute_formal_charges(deep)
-        labels = []
+        self.formal_labels = []
         for c in deep:
             # for a in c.atoms:
             #     if a.polar_hydrogen:
@@ -383,12 +392,12 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 if a in formal_charges:
                     if formal_charges[a] != 0:
                         s_formal_charge = str(formal_charges[a])
-                        labels.append(self.charge_label(a, s_formal_charge))
+                        self.formal_labels.append(self.charge_label(a, s_formal_charge))
                         a.labelled = True
 
-        if len(labels) > 0:
-            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(labels))+' labels')
-            Shape.upload_multiple(labels)
+        if len(self.formal_labels) > 0:
+            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(self.formal_labels))+' labels')
+            Shape.upload_multiple(self.formal_labels)
         else:
             self.send_notification(enums.NotificationTypes.warning, 'No formal charges label added')
 
@@ -399,20 +408,20 @@ class Hydrogens(nanome.AsyncPluginInstance):
         partial_charges = self.compute_partial_charges(deep, "mmff")
         # partial_charges = self.compute_partial_charges(deep, "gasteiger")
         # partial_charges = self.compute_partial_charges(deep, "psi4")
-        labels = []
+        self.partial_labels = []
         for c in deep:
             idA = 0
             p_c = partial_charges[c.index]
             for a in c.atoms:
                 if p_c[idA] != 0:
                     s_partial_charge = str(round(p_c[idA], 3))
-                    labels.append(self.charge_label(a, s_partial_charge))
+                    self.partial_labels.append(self.charge_label(a, s_partial_charge))
                     a.labelled = True
                 idA+=1
 
-        if len(labels) > 0:
-            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(labels))+' labels')
-            Shape.upload_multiple(labels)
+        if len(self.partial_labels) > 0:
+            self.send_notification(enums.NotificationTypes.message, 'Adding '+str(len(self.partial_labels))+' labels')
+            Shape.upload_multiple(self.partial_labels)
         else:
             self.send_notification(enums.NotificationTypes.warning, 'No partial charges label added')
 
