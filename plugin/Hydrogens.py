@@ -23,8 +23,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
 
         self.set_plugin_list_button(enums.PluginListButtonType.advanced_settings, 'pH Settings')
-        self.integration.hydrogen_add = self.add_hydrogens
-        self.integration.hydrogen_remove = self.remove_hydrogens
+        self.integration.hydrogen_add = self.integration_add
+        self.integration.hydrogen_remove = self.integration_remove
         self.ph = '7.4'
 
         self.create_settings_menu()
@@ -73,7 +73,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         # get selected complexes and add hydrogens
         deep = await self.request_complexes(indices_selected)
-        result = await self.add_hydrogens(complexes=deep)
+        result = await self.add_hydrogens(deep)
         self.update_structures_deep(result)
 
         self.set_plugin_list_button(enums.PluginListButtonType.run, 'Run', True)
@@ -83,14 +83,21 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.temp_dir.cleanup()
 
     @async_callback
-    async def add_hydrogens(self, request=None, complexes=None):
+    async def integration_add(self, request):
+        complexes = request.get_args()
+        result = await self.add_hydrogens(complexes)
+        request.send_response(complexes)
+
+    def integration_remove(self, request):
+        complexes = request.get_args()
+        result = self.remove_hydrogens(complexes)
+        request.send_response(complexes)
+
+    async def add_hydrogens(self, complexes):
         Logs.debug('Add H')
 
-        if request:
-            complexes = request.get_args()
-
         # remove all hydrogens before beginning
-        self.remove_hydrogens(complexes=complexes)
+        self.remove_hydrogens(complexes)
 
         for complex in complexes:
             complex.io.to_sdf(self.input_file.name)
@@ -116,16 +123,10 @@ class Hydrogens(nanome.AsyncPluginInstance):
             # mark hydrogens as polar in original complex
             self.match_and_update(atom_by_position, result_complex, True)
 
-        if request:
-            request.send_response(complexes)
-
         return complexes
 
-    def remove_hydrogens(self, request=None, complexes=None):
+    def remove_hydrogens(self, complexes):
         Logs.debug('Remove H')
-
-        if request:
-            complexes = request.get_args()
 
         for complex in complexes:
             for atom in list(complex.atoms):
@@ -136,9 +137,6 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 residue.remove_atom(atom)
                 for bond in list(atom.bonds):
                     residue.remove_bond(bond)
-
-        if request:
-            request.send_response(complexes)
 
         return complexes
 
