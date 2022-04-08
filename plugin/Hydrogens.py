@@ -21,6 +21,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.input_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
         self.output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.sdf', dir=self.temp_dir.name)
+        self.complex_names = []
 
         self.set_plugin_list_button(enums.PluginListButtonType.advanced_settings, 'pH Settings')
         self.integration.hydrogen_add = self.integration_add
@@ -72,9 +73,9 @@ class Hydrogens(nanome.AsyncPluginInstance):
         self.set_plugin_list_button(enums.PluginListButtonType.run, 'Running...', False)
 
         # get selected complexes and add hydrogens
-        deep = await self.request_complexes(indices_selected)
-        result = await self.add_hydrogens(deep)
-        self.update_structures_deep(result)
+        complexes = await self.request_complexes(indices_selected)
+        await self.add_hydrogens(complexes)
+        self.update_structures_deep(complexes)
 
         self.set_plugin_list_button(enums.PluginListButtonType.run, 'Run', True)
         self.send_notification(enums.NotificationTypes.success, f'Hydrogens calculated with pH {self.ph}')
@@ -85,12 +86,12 @@ class Hydrogens(nanome.AsyncPluginInstance):
     @async_callback
     async def integration_add(self, request):
         complexes = request.get_args()
-        result = await self.add_hydrogens(complexes)
+        await self.add_hydrogens(complexes)
         request.send_response(complexes)
 
     def integration_remove(self, request):
         complexes = request.get_args()
-        result = self.remove_hydrogens(complexes)
+        self.remove_hydrogens(complexes)
         request.send_response(complexes)
 
     async def add_hydrogens(self, complexes):
@@ -98,8 +99,10 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         # remove all hydrogens before beginning
         self.remove_hydrogens(complexes)
+        self.complex_names = []
 
         for complex in complexes:
+            self.complex_names.append(complex.name)
             complex.io.to_sdf(self.input_file.name)
 
             # remember atoms by position
@@ -123,8 +126,6 @@ class Hydrogens(nanome.AsyncPluginInstance):
             # mark hydrogens as polar in original complex
             self.match_and_update(atom_by_position, result_complex, True)
 
-        return complexes
-
     def remove_hydrogens(self, complexes):
         Logs.debug('Remove H')
 
@@ -137,8 +138,6 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 residue.remove_atom(atom)
                 for bond in list(atom.bonds):
                     residue.remove_bond(bond)
-
-        return complexes
 
     async def compute_hydrogens(self, polar=False):
         p = Process()
@@ -171,9 +170,12 @@ class Hydrogens(nanome.AsyncPluginInstance):
         :type polar: bool, optional
         """
 
-        unknown_atom_warnings = []
+        num_non_hydrogens = 0
+        num_unknown_atoms = 0
+
         for atom in result_complex.atoms:
             if atom.symbol != 'H':
+                num_non_hydrogens += 1
                 continue
 
             # H can only have 1 bond
@@ -182,7 +184,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
             bonded_atom_key = get_position_key(bonded_atom)
 
             if bonded_atom_key not in atom_by_position:
-                unknown_atom_warnings.append(f'H {atom.serial} bonded with unknown atom {bonded_atom.symbol} at {bonded_atom.position}')
+                num_unknown_atoms += 1
                 continue
 
             source_atom = atom_by_position[bonded_atom_key]
@@ -214,8 +216,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
                     if bond.atom2.symbol == 'H':
                         bond.atom2.polar_hydrogen = True
 
-        if unknown_atom_warnings:
-            Logs.warning('\n'.join(unknown_atom_warnings))
+        if num_unknown_atoms:
+            Logs.warning(f'{self.complex_names}: {num_unknown_atoms}/{num_non_hydrogens} atoms not found')
 
 
 def main():
