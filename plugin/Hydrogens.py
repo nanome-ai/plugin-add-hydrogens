@@ -145,7 +145,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         p.executable_path = 'nanobabel'
         p.args = ['hydrogen', '-add', '-ph', self.ph, '-i', self.input_file.name, '-o', self.output_file.name]
         p.output_text = True
-        p.on_error = Logs.error
+        p.on_error = Logs.warning
         p.on_output = Logs.debug
 
         if polar:
@@ -170,6 +170,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
         :param polar: If true, update hydrogens as polar, otherwise add hydrogens to source complex, defaults to False
         :type polar: bool, optional
         """
+
+        unknown_atom_warnings = []
         for atom in result_complex.atoms:
             if atom.symbol != 'H':
                 continue
@@ -180,7 +182,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
             bonded_atom_key = get_position_key(bonded_atom)
 
             if bonded_atom_key not in atom_by_position:
-                Logs.warning(f'H {atom.serial} bonded with unknown atom {bonded_atom.symbol} at {bonded_atom.position}')
+                unknown_atom_warnings.append(f'H {atom.serial} bonded with unknown atom {bonded_atom.symbol} at {bonded_atom.position}')
                 continue
 
             source_atom = atom_by_position[bonded_atom_key]
@@ -211,6 +213,9 @@ class Hydrogens(nanome.AsyncPluginInstance):
                         bond.atom1.polar_hydrogen = True
                     if bond.atom2.symbol == 'H':
                         bond.atom2.polar_hydrogen = True
+
+        if unknown_atom_warnings:
+            Logs.warning('\n'.join(unknown_atom_warnings))
 
 
 def main():
