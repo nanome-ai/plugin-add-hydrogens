@@ -1,14 +1,15 @@
-import nanome
 import tempfile
-from nanome.api.structure import Complex
-from nanome.util import async_callback, enums, Logs, Process, Color
-from nanome.api.shapes import Anchor, Label, Shape
-from nanome._internal._structure._bond import _Bond
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
+import nanome
 import psi4
 import resp
+from nanome._internal._structure._bond import _Bond
+from nanome.api.shapes import Anchor, Label, Shape
+from nanome.api.structure import Complex
+from nanome.util import Color, Logs, Process, async_callback, enums
+from rdkit import Chem
+from rdkit.Chem import AllChem
+
 
 def get_position_key(atom):
     """
@@ -151,6 +152,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         lbl3 = ln_lbl3.add_new_toggle_switch("")
         ln_lbl3.forward_dist = 0.001
         lbl3.selected = False
+        self._formal_charge_toggle = lbl3
 
         ln_lbl5 = main3.create_child_node()
         ln_lbl5.padding_type = ln_lbl5.PaddingTypes.fixed
@@ -158,6 +160,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
         lbl5 = ln_lbl5.add_new_toggle_switch("")
         ln_lbl5.forward_dist = 0.001
         lbl5.selected = False
+        self._partial_charge_toggle = lbl5
         
 
         self.formal_charges_labels = False
@@ -172,12 +175,21 @@ class Hydrogens(nanome.AsyncPluginInstance):
                 Shape.destroy_multiple(self.formal_labels)
                 self.formal_labels = []
             self.formal_charges_labels = input.selected
+            if input.selected:
+                self._partial_charge_toggle.selected = False
+                self.partial_charges_labels = False
+                self.update_content(self._partial_charge_toggle)
+
 
         def set_partial_charges(input):
             if len(self.partial_labels) > 0:
                 Shape.destroy_multiple(self.partial_labels)
                 self.partial_labels = []
             self.partial_charges_labels = input.selected
+            if input.selected:
+                self._formal_charge_toggle.selected = False
+                self.formal_charges_labels = False
+                self.update_content(self._formal_charge_toggle)
 
         lbl3.register_pressed_callback(set_formal_charges)
         lbl5.register_pressed_callback(set_partial_charges)
@@ -275,7 +287,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
     async def compute_hydrogens(self, polar=False):
         p = Process()
-        p.executable_path = 'nanobabel'
+        # p.executable_path = 'nanobabel'
+        p.executable_path = 'C:/Program Files/Nanome/BuildAssets/Molecular/Engine/nanobabel'
         p.args = ['hydrogen', '-add', '-ph', self.ph, '-i', self.input_file.name, '-o', self.output_file.name]
         p.output_text = True
         p.on_error = Logs.error
