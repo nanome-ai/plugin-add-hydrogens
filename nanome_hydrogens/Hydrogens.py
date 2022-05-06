@@ -355,8 +355,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         label.anchors = [anchor]
         label.text = text
-        label.font_size = 0.1
-        label.color = Color.Black()
+        label.font_size = 0.05
+        label.text = "<color=#a5a5a5>"+label.text+"</color>"
         return label
 
     def bond_type_label(self, bond):
@@ -370,8 +370,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         label.anchors = [anchor]
         label.text = str(bond.kind).replace("Kind.Covalent", "")
+        label.text = "<color=#a5a5a5>"+label.text+"</color>"
         label.font_size = 0.05
-        label.color = Color.Black()
         return label
 
     @async_callback
@@ -389,7 +389,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
             #     if label.text != "Single":
             #         labels.append(label)
             for a in c.atoms:
-                if a in formal_charges:
+                if a in formal_charges and a.selected:
                     if formal_charges[a] != 0:
                         s_formal_charge = str(formal_charges[a])
                         self.formal_labels.append(self.charge_label(a, s_formal_charge))
@@ -413,7 +413,7 @@ class Hydrogens(nanome.AsyncPluginInstance):
             idA = 0
             p_c = partial_charges[c.index]
             for a in c.atoms:
-                if p_c[idA] != 0:
+                if p_c[idA] != 0 and a.selected:
                     s_partial_charge = str(round(p_c[idA], 3))
                     self.partial_labels.append(self.charge_label(a, s_partial_charge))
                     a.labelled = True
