@@ -287,8 +287,8 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
     async def compute_hydrogens(self, polar=False):
         p = Process()
-        # p.executable_path = 'nanobabel'
-        p.executable_path = 'C:/Program Files/Nanome/BuildAssets/Molecular/Engine/nanobabel'
+        p.executable_path = 'nanobabel'
+        # p.executable_path = 'C:/Program Files/Nanome/BuildAssets/Molecular/Engine/nanobabel'
         p.args = ['hydrogen', '-add', '-ph', self.ph, '-i', self.input_file.name, '-o', self.output_file.name]
         p.output_text = True
         p.on_error = Logs.error
