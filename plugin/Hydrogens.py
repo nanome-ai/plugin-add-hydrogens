@@ -175,6 +175,12 @@ class Hydrogens(nanome.AsyncPluginInstance):
 
         for atom in result_complex.atoms:
             if atom.symbol != 'H':
+                # copy updated charge to source atom
+                atom_key = get_position_key(atom)
+                if atom_key in atom_by_position:
+                    source_atom = atom_by_position[atom_key]
+                    source_atom.formal_charge = atom.formal_charge
+
                 num_non_hydrogens += 1
                 continue
 
